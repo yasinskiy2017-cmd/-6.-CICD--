@@ -1,0 +1,13 @@
+{
+  "name": "nodejs-cicd-ec2",
+  "version": "1.0.0",
+  "description": "Node.js project with GitHub Actions CI/CD deployment to AWS EC2",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "node test.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
