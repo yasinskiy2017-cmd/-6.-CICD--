@@ -24,36 +24,7 @@ jobs:
           npm install
           npm test
 
-      # Крок 1: Декодування SSH-ключа з GitHub Secrets
-      - name: Decode SSH Key
+      - name: Deploy to Render
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: |
-          echo "${{ secrets.EC2_SSH_KEY_B64 }}" | base64 -d > ec2-key.pem
-          chmod 600 ec2-key.pem
-
-      # Крок 2: Копіювання файлів проєкту на EC2-сервер
-      - name: Copy files to EC2
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        run: |
-          mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
-          rsync -avz --exclude '.git' --exclude 'node_modules' --exclude 'ec2-key.pem' -e "ssh -i ec2-key.pem" ./ ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/home/${{ secrets.EC2_USER }}/nodeapp
-
-      # Крок 3: Встановлення залежностей та запуск застосунку на EC2 через PM2
-      - name: Run application on EC2
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        run: |
-          ssh -i ec2-key.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
-            if ! command -v node &> /dev/null; then
-                curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-                sudo apt-get install -y nodejs
-            fi
-
-            if ! command -v pm2 &> /dev/null; then
-                sudo npm install -g pm2
-            fi
-
-            cd /home/ubuntu/nodeapp
-            npm install --omit=dev
-            pm2 restart all || pm2 start index.js --name "nodeapp"
-          EOF
+          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
