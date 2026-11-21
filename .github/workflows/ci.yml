@@ -24,6 +24,32 @@ jobs:
           npm install
           npm test
 
+      - name: Decode SSH key
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY_B64 }}" | base64 -d > ~/.ssh/deploy_key.pem
+          chmod 600 ~/.ssh/deploy_key.pem
+
+      - name: Copy project files via SSH
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        continue-on-error: true
+        run: |
+          rsync -avz -e "ssh -i ~/.ssh/deploy_key.pem -o StrictHostKeyChecking=no" \
+            --exclude='.git' \
+            ./ "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:~/uptime-monitor/"
+
+      - name: Execute remote commands via SSH
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        continue-on-error: true
+        run: |
+          ssh -i ~/.ssh/deploy_key.pem -o StrictHostKeyChecking=no \
+            "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}" << 'EOF'
+            mkdir -p ~/uptime-monitor
+            cd ~/uptime-monitor
+            echo "SSH deploy step executed"
+          EOF
+
       - name: Deploy to Render
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: |
